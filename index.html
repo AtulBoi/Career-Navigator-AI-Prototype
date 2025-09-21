@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Navigator AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @keyframes particle-move {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-100px); opacity: 0; }
+        }
+        .animate-particle { animation: particle-move linear infinite; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        
+        @keyframes form-constellation {
+            0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+            50% { transform: translate(calc(cos(var(--angle)) * 40px), calc(sin(var(--angle)) * 40px)) scale(1); opacity: 1; }
+            100% { transform: translate(calc(cos(var(--angle)) * 40px), calc(sin(var(--angle)) * 40px)) scale(1); opacity: 1; }
+        }
+        .animate-form-constellation:nth-child(1) { --angle: 0deg; }
+        .animate-form-constellation:nth-child(2) { --angle: 72deg; }
+        .animate-form-constellation:nth-child(3) { --angle: 144deg; }
+        .animate-form-constellation:nth-child(4) { --angle: 216deg; }
+        .animate-form-constellation:nth-child(5) { --angle: 288deg; }
+        .animate-form-constellation { animation: form-constellation 1.5s ease-in-out infinite alternate; }
+        
+        @keyframes form-constellation-icon {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-form-constellation-icon { animation: form-constellation-icon 0.5s ease-out forwards; }
+        
+        @keyframes card-flip {
+            from {
+                opacity: 0;
+                transform: perspective(1000px) rotateY(-30deg) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: perspective(1000px) rotateY(0) scale(1);
+            }
+        }
+        .animate-card-flip { 
+            transform-origin: left center;
+            animation: card-flip 0.6s ease-out both;
+        }
+    </style>
+</head>
+<body class="bg-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- SVG Icons (Self-contained for single-file deployment) ---
+        const icons = {
+          stars: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 2.5a2.5 2.5 0 0 0-3 0l-4 4a2.5 2.5 0 0 0 0 3l4 4a2.5 2.5 0 0 0 3 0l4-4a2.5 2.5 0 0 0 0-3l-4-4z" />
+              <path d="M8.5 14.5L3 20" />
+              <path d="M15.5 8.5L21 3" />
+              <path d="m2 2 1.5 1.5" />
+              <path d="M20.5 20.5 22 22" />
+              <path d="m2 22 1.5-1.5" />
+              <path d="m22 2-1.5 1.5" />
+            </svg>
+          ),
+          fileText: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          ),
+          sparkles: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9L12 21l1.9-5.8 5.8-1.9-5.8-1.9L12 3z" />
+              <path d="M5 3v4" />
+              <path d="M19 17v4" />
+              <path d="M3 5h4" />
+              <path d="M17 19h4" />
+            </svg>
+          ),
+          cpu: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+              <rect x="9" y="9" width="6" height="6" />
+              <path d="M15 2v2" />
+              <path d="M15 20v2" />
+              <path d="M9 2v2" />
+              <path d="M9 20v2" />
+              <path d="M2 9h2" />
+              <path d="M2 15h2" />
+              <path d="M20 9h2" />
+              <path d="M20 15h2" />
+            </svg>
+          ),
+          chevronRight: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          ),
+          target: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          ),
+          lightbulb: () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5C17.7 10.2 18 9 18 7c0-2.2-1.8-4-4-4S10 4.8 10 7c0 2 .3 3.2 1.5 4.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          ),
+          share: () => (
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+          )
+        };
+
+        // --- Background Particle Effect ---
+        const BackgroundParticles = React.memo(() => {
+            const particles = useMemo(() => {
+                return Array.from({ length: 50 }).map((_, i) => ({
+                    id: i,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDuration: `${5 + Math.random() * 10}s`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    size: `${1 + Math.random() * 2}px`
+                }));
+            }, []);
+
+            return (
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+                    {particles.map(p => (
+                        <div
+                            key={p.id}
+                            className="absolute rounded-full bg-cyan-200/50 animate-particle"
+                            style={{
+                                left: p.left,
+                                top: p.top,
+                                width: p.size,
+                                height: p.size,
+                                animationDuration: p.animationDuration,
+                                animationDelay: p.animationDelay,
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        });
+
+
+        // --- Mock AI Data Generation ---
+        const fetchConstellations = (persona) => {
+          console.log("Generating constellations for persona:", persona);
+          const mockApiResponse = [
+            {
+              name: "The Narrative Architect",
+              fit: "This path leverages your marketing background to structure information, your passion for history and mythology to craft compelling stories, and your desire to combat misinformation by building truthful, engaging narratives. It's perfect for your 'solo builder' work style.",
+              roles: ["UX Writer", "Content Strategist for Tech", "Narrative Designer (Gaming/VR)", "Brand Storyteller"],
+              gatewaySkill: "UX Writing & Information Architecture",
+              sprint: {
+                mission: "Redesign the user journey for a confusing sign-up page.",
+                result: "A portfolio piece showcasing your UX writing skills.",
+                steps: [
+                  { days: "1-2", title: "Learn the Fundamentals", description: "Dive into the basics of UX writing and microcopy.", resources: [{name: "Nielsen Norman Group Articles", url: "#"}, {name: "Daily UX Writing Challenge", url: "#"}] },
+                  { days: "3-4", title: "Analyze & Rewrite", description: "Choose a real-world app with a confusing sign-up process. Use our AI-powered framework to identify friction points and rewrite all the text (buttons, tooltips, error messages)." },
+                  { days: "5-6", title: "Design & Prototype", description: "Use a simple tool like Figma (we'll provide a template) to create a simple visual of your new, improved sign-up flow.", resources: [{name: "Figma for Beginners Tutorial", url: "#"}] },
+                  { days: "7", title: "Publish & Share", description: "Write a short blog post explaining your process and add it to your portfolio. Congratulations, you now have a real UX Writing project to show employers!" }
+                ],
+                proTip: "When showcasing this in your portfolio, create a 'before and after' comparison. Explain the 'why' behind each text change to demonstrate your strategic thinking."
+              }
+            },
+            {
+              name: "The Ethical Tech Steward",
+              fit: "Your frustration with misinformation and analytical skills from your marketing work point to a career in ensuring technology is used responsibly. This constellation focuses on foresight, policy, and building trust between users and technology.",
+              roles: ["AI Ethicist", "Trust & Safety Analyst", "Responsible AI Product Manager", "Digital Policy Advisor"],
+              gatewaySkill: "AI Ethics & Risk Assessment",
+              sprint: {
+                mission: "Develop an ethical risk report for a new AI feature.",
+                result: "A comprehensive analysis portfolio piece.",
+                steps: [
+                  { days: "1-2", title: "Explore Ethical Frameworks", description: "Read foundational papers on AI ethics and analyze case studies of AI-gone-wrong." },
+                  { days: "3", title: "Select a Case Study", description: "Choose a new, real-world AI feature (e.g., a new social media algorithm, a generative AI tool)." },
+                  { days: "4-6", title: "Conduct Risk Assessment", description: "Using a provided template, analyze your chosen feature for potential harms like bias, privacy violations, and misinformation. Propose mitigations." },
+                  { days: "7", title: "Summarize Findings", description: "Create a 1-page executive summary of your risk report, perfect for sharing with potential employers." }
+                ],
+                proTip: "Use strong data visualization in your report to make complex risks easy to understand at a glance. A well-designed chart is more powerful than a dense paragraph."
+              }
+            },
+            {
+              name: "The Digital Archaeologist",
+              fit: "Fuse your fascination with ancient history with the digital world. This path involves uncovering insights from complex data sets, preserving digital history, and understanding how information shapes modern 'civilizations'. It’s a perfect fit for a curious, deep-focus builder.",
+              roles: ["Data Analyst (with a storytelling focus)", "Digital Archivist", "Market Research Analyst", "Open Source Intelligence (OSINT) Analyst"],
+              gatewaySkill: "Data Storytelling with Python",
+              sprint: {
+                mission: "Analyze a public dataset to uncover a surprising historical trend.",
+                result: "A Jupyter Notebook and a blog post visualizing your findings.",
+                steps: [
+                  { days: "1-2", title: "Setup & Learn Python Basics", description: "Install Python and key data analysis libraries (Pandas, Matplotlib). Complete a short intro-to-Python data analysis tutorial." },
+                  { days: "3", title: "Find Your Dataset", description: "Explore public datasets (e.g., from Kaggle, government sites) and choose one related to a historical topic that interests you." },
+                  { days: "4-6", title: "Analyze and Visualize", description: "Use your Python skills to clean the data, find a unique insight or correlation, and create 2-3 compelling charts to visualize your discovery." },
+                  { days: "7", title: "Tell the Story", description: "Write a blog post that explains your process, showcases your visualizations, and tells the 'story' you uncovered in the data." }
+                ],
+                proTip: "Your 'story' is the most important part. Don't just show the data; explain what it means and why it's interesting. Frame your findings as a detective story where you uncovered a secret."
+              }
+            },
+          ];
+
+          return new Promise(resolve => {
+            setTimeout(() => {
+              resolve(mockApiResponse);
+            }, 3500);
+          });
+        };
+
+
+        // --- Onboarding Component ---
+        function Onboarding({ onComplete }) {
+          const [step, setStep] = useState(1);
+          const [persona, setPersona] = useState({
+            resume: "Studied marketing, worked in retail and customer support for a tech startup.",
+            passion: "Recently fascinated by ancient history and mythology.",
+            frustration: "Frustrated by misinformation online and how it spreads.",
+            workStyle: {
+              collaboration: "Solo",
+              rhythm: "Deep Focus",
+              inclination: "Builder",
+              risk: "Adventure"
+            }
+          });
+          const [fade, setFade] = useState(true);
+
+          const totalSteps = 4;
+
+          const handleNext = () => {
+            setFade(false);
+            setTimeout(() => {
+              if (step < totalSteps) {
+                setStep(s => s + 1);
+                setFade(true);
+              } else {
+                onComplete(persona);
+              }
+            }, 300);
+          };
+          
+          const handleWorkStyleChange = (key, value) => {
+              setPersona(p => ({
+                  ...p,
+                  workStyle: { ...p.workStyle, [key]: value }
+              }));
+          };
+
+          const renderStep = () => {
+            switch (step) {
+              case 1: // Foundation
+                return (
+                  <div className="animate-fadeIn">
+                    <div className="flex items-center gap-3 text-2xl font-medium text-slate-200">
+                      {icons.fileText()} The Foundation
+                    </div>
+                    <p className="mt-2 text-slate-400">First, let's get the basics. Paste your resume or a summary of your experience below.</p>
+                    <textarea
+                      className="mt-4 w-full h-32 p-3 bg-slate-700/50 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-300"
+                      placeholder="e.g., Studied marketing, worked in retail..."
+                      value={persona.resume}
+                      onChange={e => setPersona({ ...persona, resume: e.target.value })}
+                    />
+                  </div>
+                );
+              case 2: // Spark
+                return (
+                  <div className="animate-fadeIn">
+                    <div className="flex items-center gap-3 text-2xl font-medium text-slate-200">
+                       {icons.sparkles()} The Spark
+                    </div>
+                    <p className="mt-2 text-slate-400">Now for the fun part. Let's talk passions and problems.</p>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-1">What's a topic you've recently fallen down a rabbit hole learning about, just for curiosity?</label>
+                          <input
+                            type="text"
+                            className="w-full p-3 bg-slate-700/50 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-300"
+                            value={persona.passion}
+                            onChange={e => setPersona({ ...persona, passion: e.target.value })}
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-1">What's a problem in the world that genuinely frustrates you?</label>
+                          <input
+                            type="text"
+                            className="w-full p-3 bg-slate-700/50 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-slate-300"
+                            value={persona.frustration}
+                            onChange={e => setPersona({ ...persona, frustration: e.target.value })}
+                          />
+                      </div>
+                    </div>
+                  </div>
+                );
+              case 3: // Engine
+                    const options = { collaboration: ['Team', 'Solo'], rhythm: ['Deep Focus', 'Multitasking'], inclination: ['Leader', 'Builder'], risk: ['Stability', 'Adventure'] };
+                    const labels = { collaboration: "Team vs. Solo?", rhythm: "Deep Focus vs. Multitasking?", inclination: "Leader vs. Builder?", risk: "Stability vs. Adventure?" };
+                    return (
+                        <div className="animate-fadeIn">
+                            <div className="flex items-center gap-3 text-2xl font-medium text-slate-200">{icons.cpu()} The Engine</div>
+                            <p className="mt-2 text-slate-400">A quick series of this-or-that questions to understand your work style.</p>
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {Object.keys(options).map(key => (
+                                    <div key={key}>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">{labels[key]}</label>
+                                        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                            {options[key].map(option => (
+                                                <button key={option} onClick={() => handleWorkStyleChange(key, option)}
+                                                    className={`w-1/2 py-2 text-sm rounded-md transition-colors ${persona.workStyle[key] === option ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-700/50'}`}>
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                case 4: // All Set
+                    return (
+                        <div className="text-center animate-fadeIn">
+                            <div className="flex items-center justify-center gap-3 text-2xl font-medium text-slate-200">All Set!</div>
+                            <p className="mt-2 text-slate-400 max-w-md mx-auto">Your 'Holistic Persona' is complete. We're ready to analyze your inputs and generate your unique Career Constellations.</p>
+                        </div>
+                    );
+              default: return null;
+            }
+          };
+
+          return (
+            <div className="max-w-4xl mx-auto">
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl shadow-2xl shadow-indigo-900/10">
+                    <div className="p-8 md:p-12 min-h-[350px]">
+                        <div className={`transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`}>
+                            {renderStep()}
+                        </div>
+                    </div>
+                    <div className="px-8 pb-8 flex items-center justify-between">
+                        <div>
+                            <span className="text-sm text-slate-400">Step {step} of {totalSteps}</span>
+                            <div className="w-32 h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${(step / totalSteps) * 100}%`}}></div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleNext}
+                            className="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-500 transition-all duration-200 flex items-center gap-2 shadow-lg shadow-indigo-600/20 transform hover:scale-105">
+                            {step < totalSteps ? 'Next' : 'Design My Future'} {icons.chevronRight()}
+                        </button>
+                    </div>
+                </div>
+            </div>
+          );
+        }
+
+        // --- Loading Component ---
+        function LoadingAnimation() {
+          const messages = ["Analyzing your unique persona...", "Connecting passions to potential...", "Synthesizing future-proof roles...", "Generating career constellations...", "Building your 1-Week Sprints..."];
+          const [messageIndex, setMessageIndex] = useState(0);
+
+          useEffect(() => {
+            const interval = setInterval(() => {
+              setMessageIndex(prevIndex => (prevIndex + 1) % messages.length);
+            }, 2000);
+            return () => clearInterval(interval);
+          }, []);
+
+          return (
+            <div className="text-center text-white flex flex-col items-center justify-center gap-6">
+              <div className="w-24 h-24 relative flex items-center justify-center">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="absolute w-2 h-2 bg-slate-300 rounded-full animate-form-constellation" style={{ animationDelay: `${i * 0.2}s` }}></div>
+                ))}
+                <div className="text-indigo-400 opacity-0 animate-form-constellation-icon" style={{animationDelay: '1s'}}>{icons.stars()}</div>
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Crafting Your Future...</h2>
+              <p className="text-slate-400 transition-opacity duration-500">{messages[messageIndex]}</p>
+            </div>
+          );
+        }
+
+        // --- Results Display Component ---
+        function ResultsDisplay({ constellations }) {
+            const [selected, setSelected] = useState(null);
+            const [isDetailVisible, setIsDetailVisible] = useState(false);
+
+            const handleSelect = (constellation) => {
+                if(selected && selected.name === constellation.name) {
+                    setIsDetailVisible(false);
+                    setTimeout(() => setSelected(null), 300);
+                } else {
+                    setSelected(constellation);
+                    setTimeout(() => setIsDetailVisible(true), 10);
+                }
+            };
+
+            return (
+                <div className="w-full max-w-7xl mx-auto text-white">
+                    <div className="text-center mb-12">
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-slate-200 to-slate-400">Your Career Constellations</h1>
+                        <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">Based on your Holistic Persona, we've designed these unique career paths. Click one to reveal your 1-Week Skill Sprint.</p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {constellations.map((c, index) => (
+                            <div 
+                                key={c.name}
+                                className={`bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:border-indigo-500 hover:bg-slate-800 relative overflow-hidden group animate-card-flip`}
+                                onClick={() => handleSelect(c)}
+                                style={{animationDelay: `${index * 0.15}s`}}>
+                                <div className="absolute -top-10 -right-10 text-indigo-500/10 group-hover:text-indigo-500/20 group-hover:scale-125 transition-all duration-500">{icons.stars()}</div>
+                                <h3 className="text-2xl font-bold text-slate-100">{c.name}</h3>
+                                <p className="mt-2 text-sm text-slate-400 h-20 overflow-hidden">{c.fit}</p>
+                                <div className="mt-4 border-t border-slate-700 pt-4 flex flex-wrap gap-2">
+                                   {c.roles.slice(0, 3).map(role => (<span key={role} className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded-full">{role}</span>))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {selected && (
+                        <div className={`fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${isDetailVisible ? 'opacity-100' : 'opacity-0'}`} onClick={() => handleSelect(selected)}>
+                            <div className={`bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl shadow-indigo-900/20 transform transition-all duration-300 ${isDetailVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`} onClick={e => e.stopPropagation()}>
+                                <div className="p-8">
+                                     <div className="flex justify-between items-start">
+                                        <div>
+                                            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">{selected.name}</h2>
+                                            <p className="text-slate-400 mt-2">{selected.fit}</p>
+                                        </div>
+                                        <button onClick={() => handleSelect(selected)} className="text-slate-500 hover:text-white transition-colors text-3xl leading-none">&times;</button>
+                                    </div>
+                                    <div className="mt-6 border-t border-slate-700 pt-6">
+                                       <h4 className="text-sm font-semibold uppercase tracking-wider text-indigo-400">Gateway Skill</h4>
+                                       <p className="text-xl text-slate-200 font-medium mt-1">{selected.gatewaySkill}</p>
+                                    </div>
+                                    <div className="mt-6">
+                                        <h3 className="text-2xl font-bold text-slate-100 mb-4 flex items-center gap-3">{icons.target()} Your 1-Week Skill Sprint</h3>
+                                        <div className="space-y-4">
+                                            {selected.sprint.steps.map(step => (
+                                                <div key={step.days} className="flex gap-4 items-start bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 transition-all duration-200 hover:border-indigo-500 hover:scale-[1.02]">
+                                                    <div className="w-16 text-center flex-shrink-0">
+                                                        <div className="text-xs text-slate-400">Days</div>
+                                                        <div className="text-lg font-bold text-indigo-400">{step.days}</div>
+                                                    </div>
+                                                    <div className="border-l border-slate-700 pl-4 w-full">
+                                                        <h5 className="font-semibold text-slate-200">{step.title}</h5>
+                                                        <p className="text-sm text-slate-400 mt-1">{step.description}</p>
+                                                        {step.resources && (
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {step.resources.map(res => <a href={res.url} key={res.name} target="_blank" rel="noopener noreferrer" className="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-1 rounded-full hover:bg-indigo-900 transition-colors">🔗 {res.name}</a>)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 bg-slate-900/50 border border-indigo-500/20 rounded-lg p-4 flex items-start gap-4">
+                                       <div className="text-indigo-400 mt-1">{icons.lightbulb()}</div>
+                                       <div>
+                                           <h4 className="font-semibold text-slate-200">Portfolio Pro-Tip</h4>
+                                           <p className="text-sm text-slate-400 mt-1">{selected.sprint.proTip}</p>
+                                       </div>
+                                    </div>
+                                    <div className="mt-8 text-center">
+                                        <button className="bg-slate-700 text-slate-300 font-semibold px-6 py-2 rounded-lg hover:bg-slate-600 transition-all duration-200 flex items-center gap-2 shadow-lg shadow-black/20 transform hover:scale-105 mx-auto">
+                                            {icons.share()} Share Your Goal
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- Main App Component ---
+        function App() {
+          const [appState, setAppState] = useState('onboarding'); // 'onboarding', 'loading', 'results'
+          const [persona, setPersona] = useState(null);
+          const [constellations, setConstellations] = useState([]);
+
+          const handleOnboardingComplete = (data) => {
+            setPersona(data);
+            setAppState('loading');
+          };
+          
+          useEffect(() => {
+            if (appState === 'loading') {
+              fetchConstellations(persona).then(data => {
+                setConstellations(data);
+                setAppState('results');
+              });
+            }
+          }, [appState, persona]);
+
+          return (
+            <main className="bg-slate-900 min-h-screen font-sans text-white p-4 sm:p-8 flex items-center justify-center relative overflow-hidden">
+              <BackgroundParticles />
+              <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-900/50 rounded-full filter blur-3xl opacity-20"></div>
+              <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-900/50 rounded-full filter blur-3xl opacity-20"></div>
+
+              <div className="z-10 w-full">
+                {appState === 'onboarding' && (
+                    <>
+                        <header className="text-center mb-8">
+                            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">Career Navigator AI</h1>
+                            <p className="mt-2 text-lg text-slate-400">Don't just find a job. Design your future.</p>
+                        </header>
+                        <Onboarding onComplete={handleOnboardingComplete} />
+                    </>
+                )}
+                {appState === 'loading' && <LoadingAnimation />}
+                {appState === 'results' && <ResultsDisplay constellations={constellations} />}
+              </div>
+            </main>
+          );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
